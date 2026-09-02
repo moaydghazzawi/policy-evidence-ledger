@@ -1,0 +1,250 @@
+{
+  "corpus": "Selected U.S. advanced-compute controls and Chinese official responses",
+  "retrieved_on": "2026-09-03",
+  "privacy_note": "This manifest contains public official sources only. No private research document or personal note is included.",
+  "sources": [
+    {
+      "key": "bis_2022",
+      "title": "Implementation of Additional Export Controls: Certain Advanced Computing and Semiconductor Manufacturing Items; Supercomputer and Semiconductor End Use; Entity List Modification",
+      "author_institution": "U.S. Department of Commerce, Bureau of Industry and Security",
+      "publication_date": "2022-10-13",
+      "source_type": "government_rule",
+      "url": "https://www.govinfo.gov/content/pkg/FR-2022-10-13/pdf/2022-21658.pdf",
+      "language": "en",
+      "notes": "87 FR 62186. Foundational October 2022 interim final rule."
+    },
+    {
+      "key": "bis_2023",
+      "title": "Implementation of Additional Export Controls: Certain Advanced Computing Items; Supercomputer and Semiconductor End Use; Updates and Corrections",
+      "author_institution": "U.S. Department of Commerce, Bureau of Industry and Security",
+      "publication_date": "2023-10-25",
+      "source_type": "government_rule",
+      "url": "https://www.govinfo.gov/content/pkg/FR-2023-10-25/pdf/2023-23055.pdf",
+      "language": "en",
+      "notes": "88 FR 73458. October 2023 interim final rule."
+    },
+    {
+      "key": "bis_2024",
+      "title": "Foreign-Produced Direct Product Rule Additions, and Refinements to Controls for Advanced Computing and Semiconductor Manufacturing Items",
+      "author_institution": "U.S. Department of Commerce, Bureau of Industry and Security",
+      "publication_date": "2024-12-05",
+      "source_type": "government_rule",
+      "url": "https://www.govinfo.gov/content/pkg/FR-2024-12-05/pdf/2024-28270.pdf",
+      "language": "en",
+      "notes": "89 FR 96790. December 2024 interim final rule."
+    },
+    {
+      "key": "mofcom_2023",
+      "title": "MOFCOM Spokesperson Responds to Questions on the U.S. Department of Commerce’s Final Semiconductor Export-Control Rules Targeting China",
+      "author_institution": "Ministry of Commerce of the People's Republic of China, Press Office",
+      "publication_date": "2023-10-18",
+      "source_type": "official_statement",
+      "url": "https://www.mofcom.gov.cn/xwfb/art/2023/art_019986ab22c74613894fafe14719f56e.html",
+      "language": "zh-CN",
+      "notes": "English title and evidence are descriptive translations; the original Chinese statement controls."
+    },
+    {
+      "key": "mofcom_2024",
+      "title": "MOFCOM Announcement No. 46 of 2024: Strengthening Export Controls on Relevant Dual-Use Items to the United States",
+      "author_institution": "Ministry of Commerce of the People's Republic of China",
+      "publication_date": "2024-12-03",
+      "source_type": "government_rule",
+      "url": "https://www.mofcom.gov.cn/zcfb/blgg/gg/2024/art/2024/art_1f22e2926a1d49b88d6b329549afcbdc.html",
+      "language": "zh-CN",
+      "notes": "English title is a descriptive translation; official Chinese announcement controls."
+    },
+    {
+      "key": "mofcom_2025_suspension",
+      "title": "MOFCOM Announcement No. 72 of 2025: Decision on Adjusting the Implementation of MOFCOM Announcement No. 46 of 2024",
+      "author_institution": "Ministry of Commerce of the People's Republic of China",
+      "publication_date": "2025-11-09",
+      "source_type": "government_rule",
+      "url": "https://www.mofcom.gov.cn/zcfb/blgg/gg/2025/art/2025/art_bc4513421bb24faaa84e44c2e4f36dc5.html",
+      "language": "zh-CN",
+      "notes": "English title is a descriptive translation; the official Chinese announcement controls. As of 2026-09-03, Announcement No. 72 is in force and suspends implementation of the second numbered provision of Announcement No. 46 from 2025-11-09 until 2026-11-27; it does not suspend the rest of Announcement No. 46."
+    }
+  ],
+  "claims": [
+    {
+      "key": "us_control_sequence",
+      "claim_text": "The U.S. advanced-compute control regime was revised repeatedly between October 2022 and December 2024.",
+      "interpretation": "The policy should be analyzed as an evolving sequence, not as a single unchanged intervention.",
+      "confidence": "high",
+      "known_limitation": "Rule changes establish legal scope but do not by themselves establish real-world technological effect.",
+      "status": "supported",
+      "policy_outcome": "Policy scope and implementation",
+      "case_name": "U.S. export-control sequence",
+      "time_period": "2022-2024",
+      "evidence": [
+        {
+          "key": "bis_2022_scope",
+          "source_key": "bis_2022",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "The October 2022 interim final rule added controls for certain advanced-computing items, semiconductor-manufacturing items, and specified supercomputer and semiconductor-manufacturing end uses.",
+          "locator_type": "section",
+          "locator": "87 FR 62186, Summary and Supplementary Information § I",
+          "review_state": "approved",
+          "reviewer_note": "Human-entered data point checked against the cited official rule."
+        },
+        {
+          "key": "bis_2023_update",
+          "source_key": "bis_2023",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "The October 2023 interim final rule updated and corrected the advanced-computing and supercomputer controls adopted in 2022.",
+          "locator_type": "section",
+          "locator": "88 FR 73458, Summary",
+          "review_state": "approved",
+          "reviewer_note": "Human-entered data point checked against the cited official rule."
+        },
+        {
+          "key": "bis_2024_update",
+          "source_key": "bis_2024",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "The December 2024 interim final rule added foreign-produced direct-product provisions and refined advanced-computing and semiconductor-manufacturing controls.",
+          "locator_type": "section",
+          "locator": "89 FR 96790, Summary and Supplementary Information § I",
+          "review_state": "approved",
+          "reviewer_note": "Human-entered data point checked against the cited official rule."
+        }
+      ]
+    },
+    {
+      "key": "mofcom_response_sequence",
+      "claim_text": "The selected MOFCOM records show a shift from public objection to U.S. semiconductor export controls in October 2023 to U.S.-specific dual-use export controls in December 2024.",
+      "interpretation": "The selected official record shows a shift in instruments—from an official public response to U.S.-specific dual-use controls—without proving economic effect.",
+      "confidence": "moderate",
+      "known_limitation": "Official announcements establish stated policy and legal measures, not the scale of enforcement, compliance, or downstream supply impact.",
+      "status": "supported",
+      "policy_outcome": "Chinese policy response",
+      "case_name": "Chinese official response",
+      "time_period": "2023-2024",
+      "evidence": [
+        {
+          "key": "mofcom_2023_response",
+          "source_key": "mofcom_2023",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "MOFCOM expressed strong dissatisfaction and firm opposition to the October 2023 U.S. rules and said China would take all necessary measures to safeguard its legitimate rights and interests.",
+          "locator_type": "paragraph",
+          "locator": "Official spokesperson Q&A, response paragraphs 1-3",
+          "review_state": "approved",
+          "reviewer_note": "Descriptive English data point; consult the original Chinese text."
+        },
+        {
+          "key": "mofcom_2024_controls",
+          "source_key": "mofcom_2024",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "Announcement No. 46 prohibited exports of dual-use items to U.S. military users or for military uses. Its second numbered provision generally denied licensing for relevant gallium-, germanium-, antimony-, and superhard-material dual-use items to the United States and subjected graphite dual-use items to stricter end-user and end-use review.",
+          "locator_type": "paragraph",
+          "locator": "Announcement No. 46 (2024), numbered provisions 1-2",
+          "review_state": "approved",
+          "reviewer_note": "Descriptive English data point; consult the original Chinese text."
+        }
+      ]
+    },
+    {
+      "key": "mofcom_current_status",
+      "claim_text": "As of 2026-09-03, implementation of the second numbered provision of MOFCOM Announcement No. 46 is suspended from 2025-11-09 until 2026-11-27; Announcement No. 72 does not suspend the rest of No. 46.",
+      "interpretation": "Current-status checking changes the comparison: adoption and continuing operation are separate propositions.",
+      "confidence": "high",
+      "known_limitation": "The suspension applies only to the second numbered provision and should not be generalized to the entire 2024 announcement.",
+      "status": "supported",
+      "policy_outcome": "Duration and current legal status",
+      "case_name": "Chinese official response",
+      "time_period": "2024-2026",
+      "evidence": [
+        {
+          "key": "mofcom_2025_suspension_scope",
+          "source_key": "mofcom_2025_suspension",
+          "role": "supporting",
+          "kind": "data_point",
+          "exact_text": "MOFCOM Announcement No. 72 states that implementation of the second numbered provision of Announcement No. 46 is suspended from November 9, 2025 through November 27, 2026.",
+          "locator_type": "paragraph",
+          "locator": "Announcement No. 72 (2025), operative paragraph",
+          "review_state": "approved",
+          "reviewer_note": "Verified against MOFCOM’s operative text on 2026-09-03; scope limited to the second numbered provision."
+        }
+      ]
+    },
+    {
+      "key": "rejected_overbroad_suspension",
+      "claim_text": "MOFCOM Announcement No. 72 suspended all of Announcement No. 46 during the stated period.",
+      "interpretation": "Rejected as an overbroad reading: the operative text suspends only the second numbered provision.",
+      "confidence": "high",
+      "known_limitation": "The English wording is descriptive; the official Chinese text controls, and the legal-status check is dated 2026-09-03.",
+      "status": "rejected",
+      "policy_outcome": "Duration and current legal status",
+      "case_name": "Chinese official response",
+      "time_period": "2025-2026",
+      "evidence": [
+        {
+          "key": "mofcom_2025_counterevidence",
+          "source_key": "mofcom_2025_suspension",
+          "role": "counterevidence",
+          "kind": "data_point",
+          "exact_text": "Announcement No. 72 suspends implementation of the second numbered provision of Announcement No. 46 for the stated period, rather than suspending the announcement in full.",
+          "locator_type": "paragraph",
+          "locator": "Announcement No. 72 (2025), operative paragraph",
+          "review_state": "approved",
+          "reviewer_note": "Counterevidence to the overbroad proposition; descriptive translation checked against the operative Chinese text on 2026-09-03."
+        }
+      ]
+    }
+  ],
+  "definitions": [
+    {
+      "key": "advanced_compute",
+      "version": 1,
+      "term": "Advanced compute",
+      "definition": "Computing capability and covered items falling within the technical and end-use scope of the policy instruments being studied.",
+      "scope": "Working definition for this demonstration corpus; not a universal threshold.",
+      "rationale": "Avoid treating a changing regulatory threshold as a timeless technical category."
+    },
+    {
+      "key": "current_policy_status",
+      "version": 1,
+      "term": "Current policy status",
+      "definition": "The operative state described by the most recent official instrument included in the research record.",
+      "scope": "Initial definition for the public demonstration corpus.",
+      "rationale": "Created to distinguish the adoption date from later implementation status."
+    },
+    {
+      "key": "current_policy_status",
+      "version": 2,
+      "term": "Current policy status",
+      "definition": "The operative state described by the most recent official instrument, reported with an explicit as-of date and limited to the provisions that instrument actually changes.",
+      "scope": "Revised definition for the public demonstration corpus.",
+      "rationale": "A later announcement suspended only one provision, so the definition now requires an as-of date and provision-level scope."
+    }
+  ],
+  "comparisons": [
+    {
+      "key": "historical_vs_current_status",
+      "claim_a_key": "mofcom_response_sequence",
+      "claim_b_key": "mofcom_current_status",
+      "relation": "different_period",
+      "rationale": "The first claim describes the historical shift through adoption in 2024; the second checks the later operating status of one provision through 2026."
+    },
+    {
+      "key": "scoped_vs_overbroad_status",
+      "claim_a_key": "mofcom_current_status",
+      "claim_b_key": "rejected_overbroad_suspension",
+      "relation": "disagrees",
+      "rationale": "The scoped claim follows the provision-level operative text; the rejected claim incorrectly generalizes the suspension to the whole announcement."
+    }
+  ],
+  "decisions": [
+    {
+      "key": "current_status_scope",
+      "entity_type": "claim",
+      "entity_key": "mofcom_current_status",
+      "before_state": "The 2024 measure was treated as continuing unchanged.",
+      "after_state": "The second numbered provision is suspended from 2025-11-09 through 2026-11-27; the rest of Announcement No. 46 remains in force.",
+      "rationale": "Announcement No. 72 changed the current-status assessment without undoing the historical fact that Announcement No. 46 was adopted."
+    }
+  ]
+}
