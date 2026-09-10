@@ -8,9 +8,7 @@ The application is built for a practical workflow:
 
 The first demonstration studies official records on U.S. advanced-compute controls and Chinese responses. The data model and interface are topic-neutral, so the same workflow can be reused for other policy research.
 
-[Open the public read-only demonstration](https://policy-evidence-ledger.moaydghazzawi.com/)
-
-![Research desk](docs/screenshots/research-desk.png)
+[Open Policy Evidence Ledger](https://policy-evidence-ledger.moaydghazzawi.com/)
 
 ## Why this exists
 
@@ -29,8 +27,10 @@ Policy Evidence Ledger instead uses explicit provenance and a fail-closed export
 - Compare claims as agreeing, disagreeing, using different definitions or periods, or mixed.
 - Keep a research-decision log.
 - Export citation-ready Markdown, evidence CSV, case-comparison and contradiction matrices, a memo outline, a bibliography, and a hashed export manifest.
-- Work without an API key or paid service.
-- Fall back to a read-only public demonstration if the local Python API is unavailable.
+- Sign in with ChatGPT for a private, saved online workspace; guests can explore and export the public example.
+- Revise claims without overwriting prior judgments. Carried evidence requires fresh review.
+- Download preserved source copies after their hashes are checked.
+- Run the standalone local version without an API key or paid service.
 
 The project does not summarize documents with AI. Its schema reserves a separate, unverified machine-suggestion boundary for future experiments, but the MVP contains no model call and exports no machine suggestions.
 
@@ -50,11 +50,11 @@ Open <http://localhost:3000>. The local API is available at <http://127.0.0.1:80
 To run only the backend and a previously built interface:
 
 ```bash
-npm run build
+npm run build:local
 .venv/bin/policy-evidence-ledger serve
 ```
 
-The complete interface is served from a source checkout after `npm run build`. A wheel built from this repository is a backend/CLI distribution and does not bundle the generated React assets.
+The complete interface is served from a source checkout after `npm run build:local`. A wheel built from this repository is a backend/CLI distribution and does not bundle the generated React assets.
 
 To start with an empty ledger:
 
@@ -65,6 +65,16 @@ To start with an empty ledger:
 Use a new or empty instance path; `--no-auto-seed` does not delete records from an existing database. Use `--instance-dir /path/to/folder` to keep research data somewhere other than `instance/`. The server binds to `127.0.0.1` by default.
 
 Backend settings use these CLI flags (or explicitly exported `PEL_INSTANCE_DIR` and `PEL_AUTO_SEED` environment variables). The Python service does not implicitly load a `.env` file.
+
+## Online workspace
+
+Choose **Create your workspace** on the live site and sign in with ChatGPT. Your ledger starts empty; **Use example** imports a copy of the public corpus only if you choose it. Online records are scoped to your authenticated account. They are not shared with visitors or copied into the public repository. Local and online ledgers are separate; there is no automatic sync or migration.
+
+The hosted edition stores structured records in D1 and source snapshots in private R2 storage. Each account has a 900 KB structured-data limit, a 100 MB source-storage limit, and a 25 MB per-source limit. See [Privacy and security](docs/privacy-security.md) for the storage boundary and limitations.
+
+For hosted-mode development, run `npm run db:migrate` once, then `npm run dev`. To exercise the API, start it on port 3003 and run `npm run test:cloud` in another terminal. Local development sign-in is a simulator, not a production credential.
+
+`npm run build` builds the hosted Worker; `npm run build:local` builds the standalone interface for Python. Both use the same React application.
 
 ## Demonstration
 
@@ -79,11 +89,9 @@ The seeded workspace contains six selected citation-only records from official p
 
 The records demonstrate policy sequencing, a scope-limited current-status correction, a rejected overbroad claim with counterevidence, a definition revision, two human-classified comparisons, and a decision-log update. Descriptive English text for Chinese-language sources is labeled accordingly. The selection is illustrative rather than exhaustive. Because the demo stores citations rather than copied source files, its document hashes are explicitly reported as `unavailable: citation-only`; URL ingestion or upload captures and hashes the preserved source bytes.
 
-![Claim cards](docs/screenshots/claim-cards.png)
-
 ## Design
 
-The backend is intentionally small: FastAPI for a typed local API, Pydantic for validation, and SQLite for durable structured storage. Original source bytes are stored outside the database by SHA-256 digest. The React interface focuses on the research sequence rather than generic dashboard metrics.
+The standalone backend uses FastAPI, Pydantic, and SQLite. The hosted backend uses the same research model with server-side authentication, Zod validation, D1 storage, and R2 snapshots. Original source bytes are stored outside the database by SHA-256 digest. The React interface focuses on the research sequence rather than generic dashboard metrics.
 
 Core records are:
 
@@ -128,9 +136,10 @@ This is a research-organizing tool, not a secure document-management platform. K
 - Citation formatting is a readable research bibliography, not CSL/Zotero output.
 - Case comparison is pairwise in the MVP: case names are structured claim fields, not standalone case entities.
 - Comparisons do not yet link each side to a specific definition-version ID; the rationale carries that scope.
-- Approved evidence cannot yet be revoked or superseded through the interface, and exports include every claim in the selected instance. Use a separate scoped instance when an erroneous record must be excluded.
-- There are no accounts, multi-user editing, sync, encryption, or cloud backup.
-- The public hosted preview is intentionally read-only because research data and the Python service stay local.
+- Approved evidence is immutable. Revising a claim preserves its history and requires fresh evidence review; this is not a deletion or redaction tool.
+- Exports include current findings and separately labeled full claim history. Review the entire bundle before sharing.
+- There is no collaboration, local/cloud sync, end-to-end encryption, or automated backup/restore interface.
+- Cloud storage is bounded and has no self-service cleanup yet. Keep highly sensitive research in a local instance.
 - Official-source statements establish what institutions published, not whether a policy achieved its intended effect.
 
 ## License

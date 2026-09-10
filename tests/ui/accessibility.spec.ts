@@ -25,7 +25,7 @@ async function selectView(page: import('@playwright/test').Page, view: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Local service connected')).toBeVisible();
+  await expect(page.locator('.save-state')).toHaveText('Private workspace');
 });
 
 test('main research views have no serious or critical axe violations', async ({

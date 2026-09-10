@@ -4,7 +4,7 @@
 
 ### Public URL
 
-Choose **Add source**, select URL, and enter the citation metadata and public HTTP(S) address. The backend resolves DNS, rejects localhost and private/reserved addresses, validates every redirect, accepts PDF/HTML/XHTML/plain text, applies a 25 MB limit, hashes the exact bytes preserved by the importer after standard HTTP content decoding, then stores them under `instance/blobs/<digest-prefix>/<digest>`.
+Choose **Add source**, select URL, and enter the citation metadata and public HTTP(S) address. The backend resolves DNS, rejects localhost and private/reserved addresses, validates every redirect, accepts PDF/HTML/XHTML/plain text, applies a 25 MB limit, hashes the exact bytes preserved by the importer after standard HTTP content decoding, then stores them under `instance/blobs/<digest-prefix>/<digest>` in local mode, or in account-scoped R2 storage online.
 
 If the same bytes already exist, the ledger reuses the content-addressed snapshot and preserves the new retrieval metadata as an alias event, including URL when one exists, access date, citation fields, and its independent metadata-review status. Alias metadata is visible but is not independently selectable as evidence in this MVP; claim traces continue to cite the verified canonical source record.
 
@@ -12,7 +12,7 @@ If an existing URL later returns different bytes, the ledger preserves a timesta
 
 ### File upload
 
-Upload PDF, HTML, XHTML, or plain text up to 25 MB. The application hashes bytes before storage and uses the same content-addressed duplicate rules as URL ingestion. A file stays on the local machine running the Python service.
+Upload PDF, HTML, XHTML, or plain text up to 25 MB. The application hashes bytes before storage and uses the same content-addressed duplicate rules as URL ingestion. In local mode, a file stays on the machine running Python. In hosted mode, it is uploaded to your account-scoped private storage. **Download saved copy** returns the preserved bytes after checking their hash.
 
 ### Manual citation
 
@@ -35,12 +35,16 @@ Recommended locator examples:
 
 Record the exact passage or data point in the evidence field. Put analytical meaning in the claim’s interpretation and uncertainty in its known limitation. Counterevidence is a first-class evidence role, not a note appended to the conclusion.
 
+## Claim revisions
+
+Choose **Revise claim** and record the reason for the change. The application creates a new claim and keeps the original, including its complete interpretation and approvals. Evidence copied to the replacement becomes draft and needs fresh human review. The old claim is labeled historical; its missing draft evidence no longer blocks the replacement from export.
+
 ## Export readiness
 
 Export fails closed unless all of the following are true:
 
-- the ledger contains at least one claim;
-- every claim has at least one approved evidence record;
+- the ledger contains at least one current claim;
+- every current claim has at least one approved evidence record;
 - every approved evidence record points to a verified source;
 - every approved evidence record has a locator type and locator;
 - every captured source snapshot still matches its stored SHA-256 hash.
@@ -61,18 +65,23 @@ The **Export research output** action downloads a ZIP containing:
 | `bibliography.md`                  | Referenced sources only                                                                                            |
 | `source-aliases.csv`               | Duplicate-retrieval citation metadata for evidence-referenced sources, including review status                     |
 | `source-versions.csv`              | Same-URL content-transition events whose two source records are evidence-referenced                                |
+| `claim-history.csv`                | Full claim text and interpretation, with explicit current/historical labels; no draft evidence                     |
+| `claim-revisions.csv`              | Predecessor/replacement links and the reason for each change                                                       |
+| `definition-history.csv`           | Every definition version and rationale                                                                             |
+| `decision-log.csv`                 | Research decisions and before/after states                                                                         |
 | `manifest.json`                    | App/schema version, generation time, record IDs, source hashes, and SHA-256 for each non-manifest output           |
 
 Potential spreadsheet formulas at the start of a CSV cell are prefixed with an apostrophe and identified by `csv_formula_escaped=true`; removing that documented prefix recovers the underlying field text. Markdown control syntax and raw HTML in researcher-entered fields are escaped. The unsigned export manifest records hashes for internal-consistency and accidental-corruption checks; it cannot prove authenticity against a deliberate edit that also rewrites the manifest.
 
-An export contains the full claim set in its instance. To create a narrowly scoped bundle, work in a separate scoped instance and review the entire ZIP before sharing it. The MVP does not yet archive claims or revoke approved evidence through the interface; retain corrections as rejected claims, counterevidence, and decision-log entries, or use a new scoped instance when an erroneous row must be excluded.
+An export presents current claims in the finding notes, case matrix, and memo outline. It also preserves the full claim history separately and includes approved historical evidence; draft evidence is never exported. Comparisons retain their original endpoint IDs and label historical sides. The manifest distinguishes current and historical IDs. To share only a narrow research scope, use a separate local instance and inspect the entire ZIP. Revision is not deletion or redaction.
 
 ## API equivalents
 
-The interactive API documentation is at `/docs` while the backend is running. The main routes are:
+The local Python API documentation is at `/docs` while the backend is running. The hosted API uses authenticated same-origin requests; it does not expose the local documentation UI. The main routes are:
 
 - `POST /api/sources`, `POST /api/sources/upload`, `PATCH /api/sources/{id}/verify`
-- `POST /api/claims`, `POST /api/evidence`
+- `POST /api/claims`, `PATCH /api/claims/{id}`, `POST /api/evidence`
+- `GET /api/sources/{id}/download`
 - `PATCH /api/evidence/{id}/approve`
 - `POST /api/definitions`, `POST /api/comparisons`, `POST /api/decisions`
 - `GET /api/export/readiness`, `POST /api/export`

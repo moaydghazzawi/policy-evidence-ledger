@@ -22,7 +22,7 @@ async function clickVisibleButton(
 
 test('capture canonical public-demo screenshots', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Local service connected')).toBeVisible();
+  await expect(page.locator('.save-state')).toHaveText('Private workspace');
   const dashboard = (await page.evaluate(async () => {
     const response = await fetch('/api/dashboard');
     if (!response.ok) throw new Error(`Dashboard returned ${response.status}`);
@@ -57,7 +57,7 @@ test('capture canonical public-demo screenshots', async ({ page }) => {
 
   await clickVisibleButton(page, 'Claims');
   await expect(
-    page.getByRole('heading', { name: 'Make the reasoning inspectable.' }),
+    page.getByRole('heading', { name: 'Claims & evidence' }),
   ).toBeVisible();
   await page.screenshot({
     path: path.resolve('docs/screenshots/claim-cards.png'),
@@ -68,7 +68,7 @@ test('capture canonical public-demo screenshots', async ({ page }) => {
   await clickVisibleButton(page, 'Research desk');
   await expect(
     page.getByRole('heading', {
-      name: 'Trace each conclusion back to the record.',
+      name: 'Research overview',
     }),
   ).toBeVisible();
   await page.screenshot({

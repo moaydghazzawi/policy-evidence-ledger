@@ -37,7 +37,19 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_SITE_URL: https://policy-evidence-ledger.moaydghazzawi.com
+      - run: npm run build:local
       - run: npm run test:ui
+      - run: npm run db:migrate
+      - name: Hosted API workflow
+        run: |
+          npm run dev -- --port 3003 &
+          ledger_pid=$!
+          trap 'kill "$ledger_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:3003/api/health; then break; fi
+            sleep 1
+          done
+          npm run test:cloud
 
   python-compatibility:
     runs-on: ubuntu-latest

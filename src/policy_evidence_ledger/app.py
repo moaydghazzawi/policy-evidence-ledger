@@ -20,6 +20,7 @@ from .ingestion import MAX_SOURCE_BYTES, fetch_public_source
 from .schemas import (
     MAX_SOURCE_NOTES_LENGTH,
     ClaimCreate,
+    ClaimRevision,
     ComparisonCreate,
     DecisionCreate,
     DefinitionCreate,
@@ -60,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Policy Evidence Ledger API",
-    version="0.1.0",
+    version="0.2.0",
     description=(
         "Local-only research API. Evidence exports fail closed unless each claim has "
         "approved evidence with a real source locator."
@@ -145,7 +146,7 @@ async def upstream_error_handler(_request: Request, _exc: httpx.HTTPError) -> JS
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "storage": "local", "version": "0.1.0"}
+    return {"status": "ok", "storage": "local", "version": "0.2.0"}
 
 
 @app.get("/api/dashboard")
@@ -156,6 +157,20 @@ def dashboard(request: Request):
 @app.get("/api/sources")
 def list_sources(request: Request):
     return get_store(request).list_sources()
+
+
+@app.get("/api/sources/{source_id}/download")
+def download_source(source_id: str, request: Request):
+    content = get_store(request).source_snapshot(source_id)
+    return Response(
+        content,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": 'attachment; filename="preserved-source.bin"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.post("/api/sources", status_code=201)
@@ -246,6 +261,11 @@ def add_claim(claim: ClaimCreate, request: Request):
 @app.post("/api/evidence", status_code=201)
 def add_evidence(evidence: EvidenceCreate, request: Request):
     return get_store(request).add_evidence(evidence)
+
+
+@app.patch("/api/claims/{claim_id}")
+def revise_claim(claim_id: str, revision: ClaimRevision, request: Request):
+    return get_store(request).revise_claim(claim_id, revision)
 
 
 @app.patch("/api/evidence/{evidence_id}/approve")

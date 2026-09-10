@@ -50,6 +50,10 @@ export function loadDashboard(): Promise<Dashboard> {
   return request<Dashboard>('/dashboard');
 }
 
+export function seedWorkspace() {
+  return request('/workspace/seed', { method: 'POST' });
+}
+
 export function createSource(payload: Record<string, unknown>) {
   return request('/sources', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -64,6 +68,13 @@ export function verifySource(sourceId: string) {
 
 export function createClaim(payload: Record<string, unknown>) {
   return request('/claims', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function reviseClaim(id: string, payload: Record<string, unknown>) {
+  return request(`/claims/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function createEvidence(payload: Record<string, unknown>) {

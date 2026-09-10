@@ -90,6 +90,27 @@ def test_backend_responses_cannot_be_framed(tmp_path: Path, monkeypatch) -> None
         assert checked.headers["x-frame-options"] == "DENY"
 
 
+def test_preserved_source_download_is_integrity_checked(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PEL_INSTANCE_DIR", str(tmp_path / "download"))
+    monkeypatch.setenv("PEL_AUTO_SEED", "false")
+    with TestClient(app) as client:
+        uploaded = client.post(
+            "/api/sources/upload",
+            data={"title": "Snapshot", "author_institution": "Test", "source_type": "report"},
+            files={"file": ("source.txt", b"Preserved original", "text/plain")},
+        )
+        assert uploaded.status_code == 201
+        source = uploaded.json()["source"]
+        response = client.get(f"/api/sources/{source['id']}/download")
+        assert response.status_code == 200
+        assert response.content == b"Preserved original"
+        assert response.headers["content-disposition"].startswith("attachment;")
+        digest = source["document_hash"]
+        blob = tmp_path / "download" / "blobs" / digest[:2] / digest
+        blob.write_bytes(b"Tampered snapshot")
+        assert client.get(f"/api/sources/{source['id']}/download").status_code == 422
+
+
 def test_api_full_mutation_workflow_reaches_traceable_export(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("PEL_INSTANCE_DIR", str(tmp_path / "fresh-instance"))
     monkeypatch.setenv("PEL_AUTO_SEED", "false")

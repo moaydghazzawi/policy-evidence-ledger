@@ -14,6 +14,8 @@ from pydantic import ValidationError
 
 from .schemas import (
     ClaimCreate,
+    ClaimRevision,
+    ClaimRevisionLink,
     ClaimStatus,
     ClaimView,
     ComparisonCreate,
@@ -158,6 +160,15 @@ CREATE TABLE IF NOT EXISTS research_decisions (
     after_state TEXT NOT NULL,
     rationale TEXT NOT NULL,
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS claim_revisions (
+    id TEXT PRIMARY KEY,
+    previous_claim_id TEXT NOT NULL UNIQUE REFERENCES claims(id),
+    claim_id TEXT NOT NULL REFERENCES claims(id),
+    rationale TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    CHECK (previous_claim_id != claim_id)
 );
 
 CREATE TABLE IF NOT EXISTS machine_suggestions (
@@ -577,6 +588,19 @@ class LedgerStore:
                 raise KeyError(f"source not found: {source_id}")
             return self._source_view(row, connection)
 
+    def source_snapshot(self, source_id: str) -> bytes:
+        source = self.get_source(source_id)
+        if not source.document_hash:
+            raise KeyError("This citation has no saved source copy")
+        path = self.blob_dir / source.document_hash[:2] / source.document_hash
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            raise ValueError("The saved source copy is unavailable") from exc
+        if sha256_bytes(content) != source.document_hash:
+            raise ValueError("The saved source copy failed its integrity check")
+        return content
+
     def list_sources(self) -> list[SourceView]:
         with self.connect() as connection:
             rows = connection.execute("SELECT * FROM sources ORDER BY created_at DESC").fetchall()
@@ -845,6 +869,75 @@ class LedgerStore:
         )
         return decision_id
 
+    def revise_claim(self, claim_id: str, revision: ClaimRevision) -> ClaimView:
+        values = revision.model_dump(exclude={"rationale"})
+        created = utc_now()
+        new_id = self.new_id("CLM")
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            prior = connection.execute("SELECT * FROM claims WHERE id = ?", (claim_id,)).fetchone()
+            if prior is None:
+                raise KeyError(f"claim not found: {claim_id}")
+            if connection.execute(
+                "SELECT 1 FROM claim_revisions WHERE previous_claim_id = ?", (claim_id,)
+            ).fetchone():
+                raise ValueError("this claim already has a newer revision")
+            fields = tuple(ClaimCreate.model_fields)
+            connection.execute(
+                "INSERT INTO claims (id, "
+                + ", ".join(fields)
+                + ", created_at) VALUES ("
+                + ", ".join("?" for _ in range(len(fields) + 2))
+                + ")",
+                (new_id, *[values[field] for field in fields], created.isoformat()),
+            )
+            for evidence in connection.execute(
+                "SELECT * FROM evidence WHERE claim_id = ?", (claim_id,)
+            ).fetchall():
+                connection.execute(
+                    "INSERT INTO evidence (id, claim_id, source_id, role, kind, exact_text, "
+                    "locator_type, locator, review_state, reviewer_note, origin, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', '', 'human', ?)",
+                    (
+                        self.new_id("EVD"),
+                        new_id,
+                        evidence["source_id"],
+                        evidence["role"],
+                        evidence["kind"],
+                        evidence["exact_text"],
+                        evidence["locator_type"],
+                        evidence["locator"],
+                        created.isoformat(),
+                    ),
+                )
+            connection.execute(
+                "INSERT INTO claim_revisions "
+                "(id, previous_claim_id, claim_id, rationale, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (self.new_id("REV"), claim_id, new_id, revision.rationale, created.isoformat()),
+            )
+            self._insert_decision(
+                connection,
+                DecisionCreate(
+                    entity_type=DecisionEntityType.CLAIM,
+                    entity_id=new_id,
+                    before_state=(
+                        f"Previous claim: {claim_id} ({prior['status']}; "
+                        f"{prior['confidence']} confidence). "
+                        "Full text and approvals remain in that record."
+                    ),
+                    after_state=(
+                        f"Revised claim: {new_id} ({revision.status}; "
+                        f"{revision.confidence} confidence). "
+                        "Carried evidence requires fresh review."
+                    ),
+                    rationale=revision.rationale,
+                ),
+                created,
+            )
+            row = connection.execute("SELECT * FROM claims WHERE id = ?", (new_id,)).fetchone()
+            return self._claim_view(connection, row)
+
     def list_claims(self) -> list[ClaimView]:
         with self.connect() as connection:
             rows = connection.execute("SELECT * FROM claims ORDER BY created_at DESC").fetchall()
@@ -936,6 +1029,10 @@ class LedgerStore:
                         "created_at",
                     ),
                 ),
+                "claim_revisions": (
+                    ClaimRevisionLink,
+                    ("id", "previous_claim_id", "claim_id", "rationale", "created_at"),
+                ),
                 "source_version_links": (
                     SourceVersionView,
                     ("id", "previous_source_id", "source_id", "url", "created_at"),
@@ -1004,8 +1101,24 @@ class LedgerStore:
                     issues.append(f"{row['id']} has invalid locator_type: {row['locator_type']}")
 
             claims = connection.execute("SELECT id, claim_text FROM claims ORDER BY id").fetchall()
-            if not claims:
-                issues.append("ledger has no claims")
+            revisions = dict(
+                connection.execute(
+                    "SELECT previous_claim_id, claim_id FROM claim_revisions"
+                ).fetchall()
+            )
+            for start in revisions:
+                seen = set()
+                current = start
+                while current in revisions:
+                    if current in seen:
+                        issues.append("claim revision history contains a cycle")
+                        break
+                    seen.add(current)
+                    current = revisions[current]
+            if not any(claim["id"] not in revisions for claim in claims):
+                issues.append(
+                    "ledger has no claims" if not claims else "ledger has no active claims"
+                )
             for claim in claims:
                 evidence_rows = connection.execute(
                     """
@@ -1016,7 +1129,7 @@ class LedgerStore:
                     """,
                     (claim["id"],),
                 ).fetchall()
-                if not evidence_rows:
+                if not evidence_rows and claim["id"] not in revisions:
                     issues.append(f"{claim['id']} has no approved evidence")
                     continue
                 for item in evidence_rows:
@@ -1122,6 +1235,12 @@ class LedgerStore:
                         "SELECT * FROM comparisons ORDER BY id"
                     ).fetchall()
                 ],
+                "claim_revisions": [
+                    dict(row)
+                    for row in connection.execute(
+                        "SELECT * FROM claim_revisions ORDER BY created_at"
+                    ).fetchall()
+                ],
                 "decisions": [
                     dict(row)
                     for row in connection.execute(
@@ -1218,8 +1337,12 @@ class LedgerStore:
         evidence_rows = connection.execute(
             "SELECT * FROM evidence WHERE claim_id = ? ORDER BY role, created_at", (row["id"],)
         ).fetchall()
+        revision = connection.execute(
+            "SELECT claim_id FROM claim_revisions WHERE previous_claim_id = ?", (row["id"],)
+        ).fetchone()
         return ClaimView(
             id=row["id"],
+            superseded_by=revision["claim_id"] if revision else None,
             claim_text=row["claim_text"],
             interpretation=row["interpretation"],
             confidence=row["confidence"],

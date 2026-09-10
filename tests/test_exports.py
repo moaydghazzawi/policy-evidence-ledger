@@ -89,6 +89,10 @@ def test_export_preserves_citation_and_locator(store: LedgerStore) -> None:
     archive, _ = generate_export_bundle(store, generated_at)
     files = unzip(archive)
     expected = {
+        "definition-history.csv",
+        "claim-revisions.csv",
+        "claim-history.csv",
+        "decision-log.csv",
         "bibliography.md",
         "case-comparison.csv",
         "case-comparison.md",

@@ -1,14 +1,15 @@
 'use client';
 
+// Authentication and snapshot endpoints require full document requests, not client routing.
+/* eslint-disable next/no-html-link-for-pages */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
-  Check,
   CheckCircle2,
   ChevronRight,
-  CircleDot,
   Download,
   ExternalLink,
   FileCheck2,
@@ -17,7 +18,6 @@ import {
   History,
   Library,
   Link2,
-  LockKeyhole,
   Plus,
   RefreshCw,
   Search,
@@ -30,7 +30,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -60,10 +59,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { ResearchOverview } from '@/components/research-overview';
 import {
   ApiError,
   approveEvidence,
   createClaim,
+  reviseClaim,
   createComparison,
   createDecision,
   createDefinition,
@@ -73,6 +74,7 @@ import {
   loadDashboard,
   uploadSource,
   verifySource,
+  seedWorkspace,
 } from '@/lib/ledger-api';
 import {
   fallbackDashboard,
@@ -93,6 +95,7 @@ type ViewId =
 type DialogId =
   | 'source'
   | 'claim'
+  | 'revision'
   | 'evidence'
   | 'approval'
   | 'definition'
@@ -113,16 +116,6 @@ type ModelContext = {
     options?: { signal?: AbortSignal },
   ) => void | Promise<void>;
 };
-
-const workflow = [
-  'Add source',
-  'Verify metadata',
-  'Capture claim',
-  'Record evidence',
-  'Add counterevidence',
-  'Compare cases',
-  'Export',
-];
 
 const navigation: Array<{
   id: ViewId;
@@ -230,7 +223,7 @@ function ViewHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary/70">
+        <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
           <span className="h-px w-6 bg-primary/40" />
           {eyebrow}
         </p>
@@ -251,240 +244,6 @@ function EmptyState({ children }: { children: React.ReactNode }) {
     <div className="rounded-lg border border-dashed border-border bg-card/50 px-5 py-12 text-center text-sm text-muted-foreground">
       {children}
     </div>
-  );
-}
-
-function DeskView({
-  dashboard,
-  setView,
-}: {
-  dashboard: Dashboard;
-  setView: (view: ViewId) => void;
-}) {
-  const claim = dashboard.claims[0];
-  const supporting = claim?.evidence.find((item) => item.role === 'supporting');
-  const counter = dashboard.claims
-    .flatMap((item) => item.evidence)
-    .find((item) => item.role === 'counterevidence');
-
-  return (
-    <>
-      <ViewHeader
-        eyebrow="Research desk"
-        title="Trace each conclusion back to the record."
-        description="Keep source text, interpretation, uncertainty, and changes in judgment visibly separate from one another."
-        action={
-          <Button variant="outline" size="lg" onClick={() => setView('export')}>
-            Review export readiness
-            <ArrowRight aria-hidden="true" data-icon="inline-end" />
-          </Button>
-        }
-      />
-
-      <ol
-        aria-label="Evidence workflow"
-        className="mt-6 grid overflow-hidden rounded-lg border border-border bg-card shadow-sm sm:grid-cols-4 xl:grid-cols-7"
-      >
-        {workflow.map((step, index) => (
-          <li
-            key={step}
-            className={`relative flex min-h-[68px] items-center gap-2.5 border-b border-border px-3 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${
-              index === 0 ? 'bg-primary/[0.045]' : ''
-            }`}
-          >
-            <span
-              className={`grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-semibold ${
-                index === 0
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-muted text-muted-foreground'
-              }`}
-            >
-              {index === 0 ? <CircleDot className="size-3" /> : index + 1}
-            </span>
-            <span className="text-xs font-medium leading-tight">{step}</span>
-            {index < workflow.length - 1 ? (
-              <ChevronRight
-                aria-hidden="true"
-                className="absolute right-1 hidden size-3 text-border xl:block"
-              />
-            ) : null}
-          </li>
-        ))}
-      </ol>
-
-      <section
-        aria-label="Current research record"
-        className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.8fr)]"
-      >
-        {claim ? (
-          <Card className="rounded-lg border-0 bg-card shadow-[0_1px_0_rgb(30_41_59/8%),0_8px_30px_rgb(30_41_59/5%)] ring-1 ring-border">
-            <CardHeader className="border-b border-border/80 pb-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={statusTone(claim.status)}>
-                  {sentenceCase(claim.status)}
-                </Badge>
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {claim.id}
-                </span>
-              </div>
-              <CardTitle className="mt-2 max-w-3xl text-lg leading-7">
-                {claim.claim_text}
-              </CardTitle>
-              <CardDescription>
-                Outcome: {claim.policy_outcome} · Confidence: {claim.confidence}
-              </CardDescription>
-              <CardAction>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setView('claims')}
-                >
-                  Open claim
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-5 pt-1">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-md border border-emerald-900/10 bg-emerald-50/65 p-4">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-900">
-                    <Check aria-hidden="true" className="size-3.5" /> Supporting
-                    record
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-foreground/85">
-                    {supporting?.exact_text ??
-                      'No supporting evidence recorded.'}
-                  </p>
-                  <p className="mt-3 font-mono text-[11px] leading-5 text-muted-foreground">
-                    {supporting?.source_id ?? '—'} ·{' '}
-                    {supporting?.locator ?? 'Locator required'}
-                  </p>
-                </div>
-                <div className="rounded-md border border-rose-900/10 bg-rose-50/55 p-4">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-rose-900">
-                    <GitCompareArrows aria-hidden="true" className="size-3.5" />{' '}
-                    Counterevidence
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-foreground/85">
-                    {counter?.exact_text ?? 'No counterevidence recorded.'}
-                  </p>
-                  <p className="mt-3 font-mono text-[11px] leading-5 text-muted-foreground">
-                    {counter?.source_id ?? '—'} ·{' '}
-                    {counter?.locator ?? 'Locator required'}
-                  </p>
-                </div>
-              </div>
-              <div className="grid gap-4 border-t border-border pt-5 md:grid-cols-3">
-                <div>
-                  <p className="evidence-label">Interpretation</p>
-                  <p className="mt-1.5 text-sm leading-5">
-                    {claim.interpretation}
-                  </p>
-                </div>
-                <div>
-                  <p className="evidence-label">Known limitation</p>
-                  <p className="mt-1.5 text-sm leading-5">
-                    {claim.known_limitation}
-                  </p>
-                </div>
-                <div>
-                  <p className="evidence-label">Traceability</p>
-                  <p className="mt-1.5 text-sm leading-5">
-                    {
-                      claim.evidence.filter(
-                        (item) => item.review_state === 'approved',
-                      ).length
-                    }{' '}
-                    approved, located record(s).
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <EmptyState>
-            Add the first claim to begin the evidence ledger.
-          </EmptyState>
-        )}
-
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
-          <Card className="rounded-lg border-0 ring-1 ring-border">
-            <CardHeader className="border-b border-border/80 pb-4">
-              <CardTitle>Source integrity</CardTitle>
-              <CardDescription>
-                Export gates are enforced below the interface.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                [
-                  'Metadata verified',
-                  `${dashboard.sources.filter((source) => source.metadata_status === 'verified').length} of ${dashboard.sources.length}`,
-                ],
-                [
-                  'Located evidence',
-                  String(
-                    dashboard.claims
-                      .flatMap((item) => item.evidence)
-                      .filter((item) => item.locator).length,
-                  ),
-                ],
-                [
-                  'Snapshot hashes captured',
-                  `${dashboard.sources.filter((source) => source.document_hash).length}`,
-                ],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-4"
-                >
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className="font-mono text-xs font-semibold">
-                    {value}
-                  </span>
-                </div>
-              ))}
-              <div
-                className={`rounded-md border p-3 text-xs leading-5 ${
-                  dashboard.export_ready
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
-                    : 'border-amber-200 bg-amber-50 text-amber-950'
-                }`}
-              >
-                {dashboard.export_ready
-                  ? 'All current claims pass the provenance gate.'
-                  : (dashboard.export_issues[0] ??
-                    'Add a claim before exporting.')}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-lg border-0 ring-1 ring-border">
-            <CardHeader>
-              <CardTitle>Recent decision</CardTitle>
-              <CardDescription>
-                {dashboard.decisions[0]
-                  ? formatDate(dashboard.decisions[0].created_at)
-                  : 'No changes yet'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-6">
-                {dashboard.decisions[0]?.rationale ??
-                  'Changes to claims and definitions will appear here with their rationale.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => setView('decisions')}
-                className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-              >
-                View decision log{' '}
-                <ChevronRight aria-hidden="true" className="size-3" />
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-    </>
   );
 }
 
@@ -510,8 +269,8 @@ function SourcesView({
     <>
       <ViewHeader
         eyebrow="Source register"
-        title="Preserve the source before interpreting it."
-        description="Capture bibliographic metadata, access date, immutable bytes when available, and a verified status before approving evidence."
+        title="Source register"
+        description="Your primary records, preserved and ready to cite."
         action={
           <Button size="lg" onClick={onAdd} disabled={!connected}>
             <Plus aria-hidden="true" data-icon="inline-start" /> Add source
@@ -551,6 +310,16 @@ function SourcesView({
                     >
                       Open public source{' '}
                       <ExternalLink aria-hidden="true" className="size-3" />
+                    </a>
+                  ) : null}
+                  {source.document_hash && connected ? (
+                    <a
+                      href={`/api/sources/${encodeURIComponent(source.id)}/download`}
+                      className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"
+                      download
+                    >
+                      <Download aria-hidden="true" className="size-3" />{' '}
+                      Download saved copy
                     </a>
                   ) : null}
                   {source.previous_version_id ? (
@@ -641,6 +410,7 @@ function ClaimsView({
   onAddClaim,
   onAddEvidence,
   onApproveEvidence,
+  onEditClaim,
 }: {
   dashboard: Dashboard;
   query: string;
@@ -648,6 +418,7 @@ function ClaimsView({
   onAddClaim: () => void;
   onAddEvidence: () => void;
   onApproveEvidence: (evidence: Evidence) => void;
+  onEditClaim: (claim: Claim) => void;
 }) {
   const claims = dashboard.claims.filter((claim) =>
     `${claim.claim_text} ${claim.interpretation} ${claim.policy_outcome}`
@@ -658,8 +429,8 @@ function ClaimsView({
     <>
       <ViewHeader
         eyebrow="Claim cards"
-        title="Make the reasoning inspectable."
-        description="Every card separates the policy claim, source passage or researcher-entered data point, interpretation, confidence, limitation, and counterevidence."
+        title="Claims & evidence"
+        description="Keep the argument, its supporting record, and its limits in view."
         action={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -684,6 +455,7 @@ function ClaimsView({
             sources={dashboard.sources}
             connected={connected}
             onApproveEvidence={onApproveEvidence}
+            onEditClaim={onEditClaim}
           />
         ))}
         {!claims.length ? (
@@ -699,11 +471,13 @@ function ClaimCard({
   sources,
   connected,
   onApproveEvidence,
+  onEditClaim,
 }: {
   claim: Claim;
   sources: Source[];
   connected: boolean;
   onApproveEvidence: (evidence: Evidence) => void;
+  onEditClaim: (claim: Claim) => void;
 }) {
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   return (
@@ -714,6 +488,14 @@ function ClaimCard({
             {sentenceCase(claim.status)}
           </Badge>
           <Badge variant="outline">Confidence: {claim.confidence}</Badge>
+          {connected && !claim.superseded_by ? (
+            <button
+              className="text-action ml-auto"
+              onClick={() => onEditClaim(claim)}
+            >
+              Revise claim
+            </button>
+          ) : null}
           <span className="font-mono text-[11px] text-muted-foreground">
             {claim.id}
           </span>
@@ -721,6 +503,12 @@ function ClaimCard({
         <CardTitle className="mt-2 text-lg leading-7">
           {claim.claim_text}
         </CardTitle>
+        {claim.superseded_by ? (
+          <p className="text-sm text-muted-foreground">
+            Historical version · revised in{' '}
+            <span className="font-mono text-xs">{claim.superseded_by}</span>
+          </p>
+        ) : null}
         <CardDescription>
           {claim.case_name || 'No case assigned'} ·{' '}
           {claim.time_period || 'No period assigned'} · {claim.policy_outcome}
@@ -823,7 +611,7 @@ function DefinitionsView({
     <>
       <ViewHeader
         eyebrow="Working definitions"
-        title="Record when the meaning changes."
+        title="Working definitions"
         description="Definitions are versioned rather than overwritten, and every revision rationale is preserved in the decision log."
         action={
           <Button size="lg" onClick={onAdd} disabled={!connected}>
@@ -877,7 +665,7 @@ function ComparisonsView({
     <>
       <ViewHeader
         eyebrow="Contradiction matrix"
-        title="Classify disagreement instead of flattening it."
+        title="Compare claims"
         description="Distinguish genuine conflict from different definitions, different time periods, or mixed evidence. Relationships are classified by a human reviewer."
         action={
           <Button
@@ -952,7 +740,7 @@ function DecisionsView({
     <>
       <ViewHeader
         eyebrow="Research-decision log"
-        title="Keep the changes in your thinking."
+        title="Decision log"
         description="A conclusion is more credible when the record shows what changed, why it changed, and which entity was affected."
         action={
           <Button size="lg" onClick={onAdd} disabled={!connected}>
@@ -1029,13 +817,14 @@ function ExportView({
     'Contradiction matrix',
     'Short policy-memo outline',
     'Source bibliography',
+    'Definition history and decision log',
     'Cryptographic export manifest',
   ];
   return (
     <>
       <ViewHeader
         eyebrow="Research output"
-        title="Export only what can be traced."
+        title="Export your research"
         description="The export service rechecks metadata, locators, approval state, and captured-source hashes before creating one auditable bundle."
       />
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -1126,8 +915,7 @@ function ExportView({
             </Button>
             {!connected ? (
               <p className="text-xs leading-5 text-muted-foreground">
-                Start the local Python service to generate a real export. This
-                static preview does not write data.
+                Connect to your workspace to generate an export.
               </p>
             ) : null}
           </CardContent>
@@ -1309,12 +1097,14 @@ function SourceDialog({
 }
 
 function ClaimDialog({
+  initial,
   open,
   busy,
   error,
   onOpenChange,
   onSubmit,
 }: {
+  initial?: Claim | null;
   open: boolean;
   busy: boolean;
   error: string;
@@ -1325,10 +1115,13 @@ function ClaimDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Capture a structured claim</DialogTitle>
+          <DialogTitle>
+            {initial ? 'Revise claim' : 'Capture a structured claim'}
+          </DialogTitle>
           <DialogDescription>
-            Write the claim in plain language. Evidence is attached in a
-            separate step so source text never blends into interpretation.
+            {initial
+              ? 'This creates a new version and preserves the original. Copied evidence returns to draft for fresh review. Record why your judgment changed.'
+              : 'Write the claim in plain language. Evidence is attached in a separate step so source text never blends into interpretation.'}
           </DialogDescription>
         </DialogHeader>
         <DialogMutationError message={error} />
@@ -1340,7 +1133,13 @@ function ClaimDialog({
           className="space-y-4"
         >
           <Field id="claim-text" label="Claim in plain language" required>
-            <Textarea id="claim-text" name="claim_text" required rows={3} />
+            <Textarea
+              id="claim-text"
+              name="claim_text"
+              defaultValue={initial?.claim_text}
+              required
+              rows={3}
+            />
           </Field>
           <Field
             id="claim-interpretation"
@@ -1350,6 +1149,7 @@ function ClaimDialog({
             <Textarea
               id="claim-interpretation"
               name="interpretation"
+              defaultValue={initial?.interpretation}
               required
               rows={3}
             />
@@ -1358,6 +1158,7 @@ function ClaimDialog({
             <Textarea
               id="claim-limitation"
               name="known_limitation"
+              defaultValue={initial?.known_limitation}
               required
               rows={2}
             />
@@ -1368,7 +1169,7 @@ function ClaimDialog({
                 id="claim-confidence"
                 name="confidence"
                 className="w-full"
-                defaultValue="moderate"
+                defaultValue={initial?.confidence ?? 'moderate'}
               >
                 <NativeSelectOption value="low">Low</NativeSelectOption>
                 <NativeSelectOption value="moderate">
@@ -1382,7 +1183,7 @@ function ClaimDialog({
                 id="claim-status"
                 name="status"
                 className="w-full"
-                defaultValue="unclear"
+                defaultValue={initial?.status ?? 'unclear'}
               >
                 <NativeSelectOption value="supported">
                   Supported
@@ -1397,21 +1198,46 @@ function ClaimDialog({
               </NativeSelect>
             </Field>
             <Field id="claim-outcome" label="Policy outcome" required>
-              <Input id="claim-outcome" name="policy_outcome" required />
+              <Input
+                id="claim-outcome"
+                name="policy_outcome"
+                defaultValue={initial?.policy_outcome}
+                required
+              />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="claim-case" label="Case">
-              <Input id="claim-case" name="case_name" />
+              <Input
+                id="claim-case"
+                name="case_name"
+                defaultValue={initial?.case_name}
+              />
             </Field>
             <Field id="claim-period" label="Time period">
               <Input
                 id="claim-period"
                 name="time_period"
+                defaultValue={initial?.time_period}
                 placeholder="e.g. 2022-2024"
               />
             </Field>
           </div>
+          {initial ? (
+            <Field
+              id="claim-revision-reason"
+              label="Why is this claim changing?"
+              required
+            >
+              <Textarea
+                id="claim-revision-reason"
+                name="rationale"
+                required
+                maxLength={2000}
+                rows={3}
+              />
+            </Field>
+          ) : null}
           <DialogFooter>
             <Button
               type="button"
@@ -1421,7 +1247,7 @@ function ClaimDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={busy}>
-              Capture claim
+              {initial ? 'Save revision' : 'Capture claim'}
             </Button>
           </DialogFooter>
         </form>
@@ -1984,12 +1810,30 @@ function formValues(form: HTMLFormElement): Record<string, string> {
 export function LedgerWorkspace() {
   const [dashboard, setDashboard] = useState<Dashboard>(fallbackDashboard);
   const [connected, setConnected] = useState(false);
-  const [view, setView] = useState<ViewId>('desk');
+  const [view, updateView] = useState<ViewId>('desk');
+  const setView = (next: ViewId) => {
+    updateView(next);
+    setQuery('');
+    if (typeof window !== 'undefined')
+      window.history.pushState(null, '', `#${next}`);
+  };
+  useEffect(() => {
+    const syncView = () => {
+      const section = window.location.hash.slice(1);
+      if (navigation.some((item) => item.id === section))
+        updateView(section as ViewId);
+    };
+    syncView();
+    window.addEventListener('popstate', syncView);
+    return () => window.removeEventListener('popstate', syncView);
+  }, []);
   const [dialog, setDialog] = useState<DialogId>(null);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [revisionTarget, setRevisionTarget] = useState<Claim | null>(null);
   const [approvalTarget, setApprovalTarget] = useState<Evidence | null>(null);
 
   const changeDialog = (next: DialogId) => {
@@ -2001,11 +1845,16 @@ export function LedgerWorkspace() {
     try {
       const next = await loadDashboard();
       setDashboard(next);
-      setConnected(true);
+      setConnected(next.workspace?.mode !== 'demo');
       setError('');
-    } catch {
-      setDashboard(fallbackDashboard);
-      setConnected(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Your workspace is unavailable. Please retry.',
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -2041,7 +1890,9 @@ export function LedgerWorkspace() {
           annotations: { readOnlyHint: false, untrustedContentHint: false },
           async execute(input) {
             if (!connected)
-              throw new Error('The local Python service is not connected.');
+              throw new Error(
+                'Sign in to save a source in your private workspace.',
+              );
             if (!input || typeof input !== 'object')
               throw new Error('Input must be an object.');
             const values = input as Record<string, unknown>;
@@ -2146,7 +1997,7 @@ export function LedgerWorkspace() {
           return `Citation saved with a possible duplicate warning: ${payload.citation_duplicate_warning.join(', ')}.`;
         }
         return mode === 'url'
-          ? 'Public source fetched, hashed, and stored locally; verify the metadata next.'
+          ? 'Source captured and its snapshot saved; verify the metadata next.'
           : 'Manual citation saved; verify the metadata next.';
       },
     );
@@ -2175,8 +2026,15 @@ export function LedgerWorkspace() {
             dashboard={dashboard}
             query={query}
             connected={connected}
-            onAddClaim={() => changeDialog('claim')}
+            onAddClaim={() => {
+              setRevisionTarget(null);
+              changeDialog('claim');
+            }}
             onAddEvidence={() => changeDialog('evidence')}
+            onEditClaim={(claim) => {
+              setRevisionTarget(claim);
+              changeDialog('revision');
+            }}
             onApproveEvidence={(evidence) => {
               setApprovalTarget(evidence);
               changeDialog('approval');
@@ -2211,7 +2069,7 @@ export function LedgerWorkspace() {
         return (
           <ExportView
             dashboard={dashboard}
-            connected={connected}
+            connected={connected || dashboard.workspace?.mode === 'demo'}
             busy={busy}
             onExport={() =>
               void runMutation(downloadExport, 'Research bundle downloaded.')
@@ -2219,197 +2077,242 @@ export function LedgerWorkspace() {
           />
         );
       default:
-        return <DeskView dashboard={dashboard} setView={setView} />;
+        return (
+          <ResearchOverview
+            dashboard={dashboard}
+            navigate={setView}
+            onAdd={() => changeDialog('source')}
+            editable={connected}
+          />
+        );
     }
   })();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="ledger-app min-h-screen bg-background text-foreground">
       <a
         href="#workspace"
         className="sr-only z-[100] rounded bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
       >
         Skip to research workspace
       </a>
-      <header className="sticky top-0 z-40 border-b border-border/90 bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => setView('desk')}
-            className="flex min-w-0 items-center gap-3 text-left"
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary text-primary-foreground shadow-sm">
-              <FileCheck2 aria-hidden="true" className="size-4" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate font-heading text-[15px] font-semibold tracking-tight">
-                Policy Evidence Ledger
-              </span>
-              <span className="hidden text-xs text-muted-foreground sm:block">
-                Local research workspace
-              </span>
-            </span>
-          </button>
-          {view === 'sources' || view === 'claims' ? (
-            <label className="relative ml-auto hidden w-full max-w-md md:block">
-              <span className="sr-only">
-                Search {view === 'sources' ? 'sources' : 'claims'}
-              </span>
-              <Search
-                aria-hidden="true"
-                className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={`Search ${view}`}
-                className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none transition"
-              />
-            </label>
-          ) : (
-            <span className="ml-auto" />
-          )}
-          <div className="ml-auto flex items-center gap-2 md:ml-2">
-            <Badge
-              variant="outline"
-              className={
-                connected
-                  ? 'hidden border-emerald-700/20 bg-emerald-50 text-emerald-800 sm:inline-flex'
-                  : 'hidden border-amber-700/20 bg-amber-50 text-amber-900 sm:inline-flex'
-              }
+      <aside className="ledger-sidebar">
+        <button className="ledger-brand" onClick={() => setView('desk')}>
+          <span className="brand-symbol">
+            <FileCheck2 size={22} />
+          </span>
+          <span>
+            Policy Evidence<span>LEDGER</span>
+          </span>
+        </button>
+        <div className="workspace-selector">
+          <span className="workspace-monogram">P</span>
+          <div>
+            <strong>Policy research</strong>
+            <span>{connected ? 'Private workspace' : 'Example workspace'}</span>
+          </div>
+          <ChevronRight size={15} />
+        </div>
+        <p className="nav-label">WORKSPACE</p>
+        <nav aria-label="Research sections" className="ledger-navigation">
+          {navigation.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-label={label}
+              aria-current={view === id ? 'page' : undefined}
             >
-              {connected ? (
-                <ShieldCheck aria-hidden="true" data-icon="inline-start" />
-              ) : (
-                <LockKeyhole aria-hidden="true" data-icon="inline-start" />
-              )}
-              {connected ? 'Local service connected' : 'Read-only demo preview'}
-            </Badge>
-            <Button
-              size="lg"
-              onClick={() => changeDialog('source')}
-              disabled={!connected}
-            >
-              <Plus aria-hidden="true" data-icon="inline-start" /> Add source
-            </Button>
+              <Icon size={18} />
+              <span>{label}</span>
+              {id !== 'desk' && id !== 'export' ? (
+                <small>{counts[id]}</small>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-footnote">
+          <ShieldCheck size={19} />
+          <strong>Evidence before conclusions.</strong>
+          <p>
+            Human review keeps every source, judgment, and revision accountable.
+          </p>
+        </div>
+        <div className="sidebar-account">
+          <span className="account-avatar">{connected ? 'R' : 'G'}</span>
+          <div>
+            <strong>
+              {dashboard.workspace?.display_name ||
+                (connected ? 'Researcher' : 'Guest researcher')}
+            </strong>
+            <span>
+              {connected
+                ? dashboard.workspace?.mode === 'cloud'
+                  ? 'Private · saved online'
+                  : 'Saved on your device'
+                : 'Exploring the sample ledger'}
+            </span>
           </div>
         </div>
-        <nav
-          aria-label="Research sections"
-          className="overflow-x-auto border-t border-border/70 lg:hidden"
-        >
-          <div className="flex min-w-max gap-1 px-3 py-2">
-            {navigation.map(({ id, label, icon: Icon }) => (
+      </aside>
+      <div className="ledger-main">
+        <header className="ledger-topbar">
+          <div className="breadcrumb">
+            <span>Workspace</span>
+            <ChevronRight size={14} />
+            <strong>
+              {navigation.find((item) => item.id === view)?.label}
+            </strong>
+          </div>
+          <div className="topbar-actions">
+            <span className="save-state">
+              <ShieldCheck size={14} />
+              {loading
+                ? 'Connecting…'
+                : connected
+                  ? 'Private workspace'
+                  : 'Public example'}
+            </span>
+            {connected ? (
               <button
-                key={id}
-                type="button"
-                onClick={() => setView(id)}
-                aria-label={label}
-                aria-current={view === id ? 'page' : undefined}
-                className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium ${
-                  view === id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-muted'
-                }`}
+                className="icon-action"
+                aria-label="Refresh workspace"
+                onClick={() => void refresh()}
+                disabled={busy}
               >
-                <Icon aria-hidden="true" className="size-3.5" /> {label}
+                <RefreshCw size={17} />
               </button>
-            ))}
+            ) : (
+              <a
+                href="/signin-with-chatgpt?return_to=%2F"
+                target="_top"
+                className="action-primary"
+              >
+                Create your workspace <ArrowRight size={15} />
+              </a>
+            )}
+            {dashboard.workspace?.mode === 'cloud' ? (
+              <a
+                className="text-action signout"
+                href="/signout-with-chatgpt?return_to=%2F"
+                target="_top"
+              >
+                Sign out
+              </a>
+            ) : null}
           </div>
-        </nav>
-      </header>
-
-      <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[224px_minmax(0,1fr)]">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] border-r border-border/80 bg-sidebar px-3 py-5 lg:block">
-          <nav aria-label="Research sections" className="space-y-1">
-            {navigation.map(({ id, label, icon: Icon }) => {
-              const count =
-                id === 'desk' || id === 'export' ? undefined : counts[id];
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setView(id)}
-                  aria-label={label}
-                  aria-current={view === id ? 'page' : undefined}
-                  className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${
-                    view === id
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                  }`}
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                  <span className="flex-1">{label}</span>
-                  {count !== undefined ? (
-                    <span
-                      className={
-                        view === id
-                          ? 'text-xs text-white/70'
-                          : 'text-xs text-muted-foreground'
-                      }
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
-          <div className="mt-8 border-t border-sidebar-border pt-5">
-            <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Current ledger
-            </p>
-            <div className="mt-3 rounded-md border border-sidebar-border bg-card px-3 py-3 shadow-sm">
-              <p className="text-sm font-medium leading-snug">
-                Evidence-led policy research
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Topic follows your source records
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-5 left-3 right-3 rounded-md border border-sidebar-border bg-card/70 p-3 text-[11px] leading-5 text-muted-foreground">
-            <p className="font-semibold text-foreground">
-              Human review boundary
-            </p>
-            Machine suggestions never enter approved evidence or exports without
-            explicit review.
-          </div>
-        </aside>
-
-        <main
-          id="workspace"
-          className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+        </header>
+        <nav
+          aria-label="Mobile research sections"
+          className="mobile-navigation"
         >
-          <div className="mx-auto max-w-[1240px]">
-            {!connected ? (
-              <Alert className="mb-5 border-amber-200 bg-amber-50 text-amber-950">
-                <LockKeyhole aria-hidden="true" />
-                <AlertTitle>Read-only demonstration</AlertTitle>
-                <AlertDescription className="text-amber-900/80">
-                  The interface is showing a public sample corpus. Start the
-                  local Python service to add, verify, compare, and export
-                  records.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {notice ? (
-              <Alert className="mb-5 border-emerald-200 bg-emerald-50 text-emerald-950">
-                <CheckCircle2 aria-hidden="true" />
-                <AlertTitle>Saved</AlertTitle>
-                <AlertDescription>{notice}</AlertDescription>
-              </Alert>
-            ) : null}
-            {error ? (
-              <Alert variant="destructive" className="mb-5">
-                <AlertTriangle aria-hidden="true" />
-                <AlertTitle>Could not complete that step</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-            {activeView}
-          </div>
+          {navigation.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-label={label}
+              aria-current={view === id ? 'page' : undefined}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <main id="workspace" className="ledger-content">
+          {!connected && !loading ? (
+            <div className="demo-notice">
+              <BookOpen size={18} />
+              <div>
+                <strong>Explore the example ledger.</strong>
+                <span>
+                  {' '}
+                  Sign in to build your own private collection of sources and
+                  evidence.
+                </span>
+              </div>
+              <a href="/signin-with-chatgpt?return_to=%2F" target="_top">
+                Start researching <ArrowRight size={14} />
+              </a>
+            </div>
+          ) : null}
+          {dashboard.workspace?.mode === 'cloud' &&
+          !dashboard.sources.length ? (
+            <div className="demo-notice">
+              <BookOpen size={18} />
+              <div>
+                <strong>Your workspace is ready.</strong>
+                <span>
+                  {' '}
+                  Start with your own source or explore a copy of the public
+                  example.
+                </span>
+              </div>
+              <button
+                className="text-action"
+                disabled={busy}
+                onClick={() =>
+                  void runMutation(
+                    seedWorkspace,
+                    'Example ledger copied into your private workspace.',
+                  )
+                }
+              >
+                Use example <ArrowRight size={14} />
+              </button>
+            </div>
+          ) : null}
+          {notice ? (
+            <Alert className="mb-5 border-emerald-200 bg-emerald-50 text-emerald-950">
+              <CheckCircle2 aria-hidden="true" />
+              <AlertTitle>Saved</AlertTitle>
+              <AlertDescription>{notice}</AlertDescription>
+            </Alert>
+          ) : null}
+          {error && !dialog ? (
+            <Alert variant="destructive" className="mb-5">
+              <AlertTriangle aria-hidden="true" />
+              <AlertTitle>Could not complete that step</AlertTitle>
+              <AlertDescription>
+                {error}
+                <button
+                  className="text-action ml-3"
+                  onClick={() => void refresh()}
+                >
+                  Retry
+                </button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {view === 'sources' || view === 'claims' ? (
+            <div className="workspace-search">
+              <Search size={17} />
+              <input
+                aria-label={`Search ${view}`}
+                type="search"
+                placeholder={`Search ${view}…`}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              {query ? (
+                <button onClick={() => setQuery('')} aria-label="Clear search">
+                  Clear
+                </button>
+              ) : (
+                <span>Filter your collection</span>
+              )}
+            </div>
+          ) : null}
+          {activeView}
+          <footer className="workspace-footer">
+            <span>Policy Evidence Ledger</span>
+            <span>Built for careful research.</span>
+            <a
+              href="https://github.com/moaydghazzawi/policy-evidence-ledger"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Source code <ExternalLink size={12} />
+            </a>
+          </footer>
         </main>
       </div>
 
@@ -2421,15 +2324,26 @@ export function LedgerWorkspace() {
         onSubmit={handleSource}
       />
       <ClaimDialog
-        open={dialog === 'claim'}
+        key={dialog === 'revision' ? revisionTarget?.id : 'new-claim'}
+        initial={dialog === 'revision' ? revisionTarget : null}
+        open={dialog === 'claim' || dialog === 'revision'}
         busy={busy}
         error={error}
-        onOpenChange={(open) => changeDialog(open ? 'claim' : null)}
+        onOpenChange={(open) =>
+          changeDialog(
+            open ? (dialog === 'revision' ? 'revision' : 'claim') : null,
+          )
+        }
         onSubmit={(form) => {
           const values = formValues(form);
           void runMutation(
-            () => createClaim(values),
-            'Claim captured; attach located evidence next.',
+            () =>
+              dialog === 'revision' && revisionTarget
+                ? reviseClaim(revisionTarget.id, values)
+                : createClaim(values),
+            dialog === 'revision'
+              ? 'Claim revised. The previous judgment and your rationale are preserved in the decision log.'
+              : 'Claim captured; attach located evidence next.',
           );
         }}
       />

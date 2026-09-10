@@ -1,6 +1,14 @@
 # Privacy and security
 
-Policy Evidence Ledger is local-first: its Python service stores research data in a local SQLite database and source snapshots in a local blob directory. It has no telemetry, user account, analytics service, model provider, or cloud database in the MVP.
+Policy Evidence Ledger offers two separate storage modes. The standalone Python service keeps research in local SQLite and source files on your device. The online edition uses ChatGPT sign-in, D1 structured storage, and private R2 source snapshots. The app has no analytics tracker or AI model call. Hosting infrastructure may retain operational logs; do not treat hosted mode as offline or end-to-end encrypted.
+
+## Online data boundary
+
+Anonymous visitors can read and export only the bundled public example. Signing in creates access to a private, initially empty ledger. The backend derives ownership from gateway-authenticated identity, never a submitted owner ID. Every record, download, and export uses that ownership boundary. Signing out returns to the public example. Publishing application code does not publish users' stored research.
+
+Each account is limited to 900 KB of structured JSON, 100 MB of snapshot reservations, and 25 MB per source. Reservations for failed or interrupted saves still count, preventing quota bypass through abandoned uploads. There is no self-service cleanup or whole-workspace deletion interface yet. Local and cloud data do not sync; existing local research is not automatically uploaded.
+
+The hosted API rejects cross-site writes, uses no-store response headers, and blocks framing. D1 revision checks reject overlapping writes rather than silently losing one. A signed-in researcher can still open an unsafe source file after downloading it; files are delivered as attachments, not executed inside the workspace.
 
 ## Local data boundary
 
@@ -17,7 +25,7 @@ The directory is excluded from Git. You can move it with `--instance-dir`. The C
 
 State-changing API routes also reject browser requests carrying a non-loopback `Origin` header, or a cross-site fetch marker without an origin. Backend responses and the development and hosted frontends set `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY` to prevent clickjacking through a framed local workspace. These controls protect the unauthenticated loopback service from ordinary cross-origin and framing attacks; they are not a replacement for authentication if the service is ever exposed beyond a trusted machine.
 
-The static public preview contains only the six-source public demonstration. It cannot read or modify a local ledger unless it is served with the local Python backend.
+The public online site cannot read a local ledger. Use `npm run dev:full` or a standalone build served by Python to work with local records.
 
 ## Repository safeguards
 
@@ -37,7 +45,7 @@ Downloaded and uploaded source bytes are hashed with SHA-256 before content-addr
 
 ## Network ingestion
 
-The URL importer:
+Both URL importers use these safeguards:
 
 - accepts only `http` and `https`;
 - resolves the hostname and rejects loopback, link-local, private, reserved, multicast, unspecified, IPv4-mapped, 6to4, Teredo, and NAT64 addresses;
@@ -48,7 +56,7 @@ The URL importer:
 
 Manual citations and upload metadata reject URLs containing embedded usernames or passwords so credentials cannot be copied into an export.
 
-These checks reduce server-side request forgery risk but are not a substitute for a hardened network sandbox.
+The hosted importer checks public DNS responses before each fetch but does not pin the network connection to those addresses. This is a DNS-rebinding limitation; it is not equivalent to network-level isolation. Hosted mode has no private-network/VPC binding. These checks reduce server-side request forgery risk but are not a substitute for a hardened network sandbox.
 
 The SQLite ledger is not cryptographically signed. Export performs defensive consistency checks, but an operator with direct database write access can alter provenance fields. Treat filesystem access as trusted and verify publication-critical citations against the original records.
 
@@ -58,7 +66,7 @@ The MVP does not call an AI model. The database reserves machine suggestions in 
 
 ## Threat-model limits
 
-The app does not provide authentication, authorization, encryption at rest, audit-log signing, malware scanning, sandboxed document rendering, or multi-user isolation. It is intended for one researcher on a trusted machine. For sensitive work:
+Hosted mode provides account-scoped authorization, but neither edition provides end-to-end encryption, signed audit logs, malware scanning, collaborative editing, or a backup-restore interface. The local service has no account system and is intended for one researcher on a trusted machine. For sensitive work:
 
 - use full-disk encryption and an encrypted backup;
 - keep the service on loopback;

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 from .storage import LedgerStore
 
-EXPORT_SCHEMA_VERSION = "1.0"
+EXPORT_SCHEMA_VERSION = "1.1"
 
 
 class ExportBlocked(ValueError):
@@ -85,6 +85,10 @@ def generate_export_bundle(
     generated_at = (generated_at or datetime.now(UTC)).replace(microsecond=0)
     sources = {str(item["id"]): item for item in records["sources"]}
     claims = {str(item["id"]): item for item in records["claims"]}
+    superseded = {
+        str(item["previous_claim_id"]): str(item["claim_id"]) for item in records["claim_revisions"]
+    }
+    active_claims = {key: value for key, value in claims.items() if key not in superseded}
     approved_evidence = [item for item in records["evidence"] if item["review_state"] == "approved"]
     referenced_source_ids = {str(item["source_id"]) for item in approved_evidence}
     referenced_aliases = [
@@ -112,7 +116,7 @@ def generate_export_bundle(
         "Source content, researcher interpretation, and uncertainty are separated below.",
         "",
     ]
-    for claim_id, claim in claims.items():
+    for claim_id, claim in active_claims.items():
         claim_lines.extend(
             [
                 f"## {claim_id}: {_safe_markdown_inline(claim['claim_text'])}",
@@ -261,7 +265,7 @@ def generate_export_bundle(
             "confidence": claim["confidence"],
             "approved_evidence_count": len(evidence_by_claim[claim_id]),
         }
-        for claim_id, claim in claims.items()
+        for claim_id, claim in active_claims.items()
     ]
     case_columns = [
         "claim_id",
@@ -304,9 +308,11 @@ def generate_export_bundle(
         {
             "comparison_id": item["id"],
             "claim_a_id": item["claim_a_id"],
-            "claim_a": claims[str(item["claim_a_id"])]["claim_text"],
+            "claim_a": ("[Historical] " if str(item["claim_a_id"]) in superseded else "")
+            + str(claims[str(item["claim_a_id"])]["claim_text"]),
             "claim_b_id": item["claim_b_id"],
-            "claim_b": claims[str(item["claim_b_id"])]["claim_text"],
+            "claim_b": ("[Historical] " if str(item["claim_b_id"]) in superseded else "")
+            + str(claims[str(item["claim_b_id"])]["claim_text"]),
             "claim_a_source_ids": " | ".join(
                 sorted(
                     {
@@ -393,7 +399,7 @@ def generate_export_bundle(
         "## Evidence by finding",
         "",
     ]
-    for claim_id, claim in claims.items():
+    for claim_id, claim in active_claims.items():
         counter = [
             item for item in evidence_by_claim[claim_id] if item["role"] == "counterevidence"
         ]
@@ -442,16 +448,74 @@ def generate_export_bundle(
         )
     files["bibliography.md"] = "\n".join(bibliography) + "\n"
 
+    files["claim-history.csv"] = _write_csv(
+        [
+            {
+                **claim,
+                "superseded_by": superseded.get(str(claim["id"]), ""),
+                "history_only": str(claim["id"]) in superseded,
+            }
+            for claim in records["claims"]
+        ],
+        [
+            "id",
+            "claim_text",
+            "interpretation",
+            "confidence",
+            "known_limitation",
+            "status",
+            "policy_outcome",
+            "case_name",
+            "time_period",
+            "created_at",
+            "superseded_by",
+            "history_only",
+            "csv_formula_escaped",
+        ],
+    )
+    files["claim-revisions.csv"] = _write_csv(
+        records["claim_revisions"],
+        ["id", "previous_claim_id", "claim_id", "rationale", "created_at", "csv_formula_escaped"],
+    )
+    files["definition-history.csv"] = _write_csv(
+        records["definitions"],
+        [
+            "id",
+            "definition_id",
+            "version",
+            "term",
+            "definition",
+            "scope",
+            "rationale",
+            "created_at",
+            "csv_formula_escaped",
+        ],
+    )
+    files["decision-log.csv"] = _write_csv(
+        records["decisions"],
+        [
+            "id",
+            "entity_type",
+            "entity_id",
+            "before_state",
+            "after_state",
+            "rationale",
+            "created_at",
+            "csv_formula_escaped",
+        ],
+    )
+
     file_hashes = {
         name: hashlib.sha256(content.encode("utf-8")).hexdigest()
         for name, content in sorted(files.items())
     }
     manifest = {
         "app": "Policy Evidence Ledger",
-        "app_version": "0.1.0",
+        "app_version": "0.2.0",
         "schema_version": EXPORT_SCHEMA_VERSION,
         "generated_at": generated_at.isoformat(),
-        "claim_ids": sorted(claims),
+        "claim_ids": sorted(active_claims),
+        "historical_claim_ids": sorted(superseded),
         "source_ids": sorted(referenced_source_ids),
         "source_alias_ids": sorted(str(item["id"]) for item in referenced_aliases),
         "source_version_link_ids": sorted(str(item["id"]) for item in referenced_versions),

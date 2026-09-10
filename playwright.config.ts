@@ -17,7 +17,7 @@ const webServer = [
 
 if (!existingFrontend) {
   webServer.push({
-    command: `PEL_API_URL=${apiURL} npm run dev -- --host localhost --port ${frontendPort}`,
+    command: `PEL_LOCAL_API=1 PEL_API_URL=${apiURL} npm run dev -- --host localhost --port ${frontendPort}`,
     url: frontendURL,
     reuseExistingServer: false,
     timeout: 120_000,

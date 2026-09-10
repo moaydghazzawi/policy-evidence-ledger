@@ -8,14 +8,6 @@ A local-first research workspace that makes every exportable policy claim tracea
 
 `ADD SOURCE → VERIFY METADATA → CAPTURE CLAIM → RECORD EVIDENCE → ADD COUNTEREVIDENCE → COMPARE CASES → EXPORT RESEARCH OUTPUT`
 
-## Screenshots
-
-![Research desk](docs/screenshots/research-desk.png)
-
-![Structured claim cards](docs/screenshots/claim-cards.png)
-
-![Mobile research desk](docs/screenshots/mobile-research-desk.png)
-
 ## Current capabilities
 
 - Public URL, PDF/HTML/text upload, and manual-citation ingestion
@@ -28,7 +20,10 @@ A local-first research workspace that makes every exportable policy claim tracea
 - Fail-closed Markdown/CSV/ZIP exports with output hashes
 - Public official demonstration corpus
 - Keyboard, responsive, and automated accessibility checks
-- No API key, paid service, or model call
+- Private saved online workspaces through ChatGPT sign-in
+- Immutable claim revisions with fresh evidence review and full history
+- Preserved-source downloads
+- Standalone local mode without an API key or model call
 
 The bundled demonstration uses six selected official GovInfo and MOFCOM records, rechecked on September 3, 2026. Its current-status example records that MOFCOM Announcement No. 72 suspends only the second numbered provision of Announcement No. 46 through November 27, 2026—not Announcement No. 46 in full.
 
@@ -37,12 +32,14 @@ The bundled demonstration uses six selected official GovInfo and MOFCOM records,
 - Metadata verification and evidence extraction are manual.
 - The app preserves source files but does not render, OCR, or search their full text.
 - Bibliography output is not yet CSL/Zotero compatible.
-- There is no account system, collaboration, sync, or cloud backup.
+- No collaboration, local/cloud sync, end-to-end encryption, or backup import.
+- Online storage: 900 KB structured ledger, 100 MB snapshots, 25 MB per source.
 - Case comparison is pairwise; the MVP does not model cases as standalone entities.
-- The hosted public preview is read-only; private working data remains in the local Python application.
+- Anonymous visitors see the public example. Signed-in users get their own private workspace.
+- Local research is never automatically uploaded.
 
 ## Links
 
-- Public demo: [policy-evidence-ledger.moaydghazzawi.com](https://policy-evidence-ledger.moaydghazzawi.com/)
+- Live workspace: [policy-evidence-ledger.moaydghazzawi.com](https://policy-evidence-ledger.moaydghazzawi.com/)
 - Source repository: [github.com/moaydghazzawi/policy-evidence-ledger](https://github.com/moaydghazzawi/policy-evidence-ledger)
 - Future portfolio entry: [moaydghazzawi.com](https://moaydghazzawi.com/) — add a dedicated case study when the broader portfolio is next updated.

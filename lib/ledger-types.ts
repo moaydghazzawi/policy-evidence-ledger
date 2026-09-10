@@ -49,6 +49,7 @@ export type Evidence = {
 };
 
 export type Claim = {
+  superseded_by?: string | null;
   id: string;
   claim_text: string;
   interpretation: string;
@@ -93,6 +94,8 @@ export type Decision = {
 };
 
 export type Dashboard = {
+  workspace?: { mode: 'demo' | 'cloud' | 'local'; display_name?: string };
+  revision?: number;
   sources: Source[];
   claims: Claim[];
   definitions: DefinitionVersion[];

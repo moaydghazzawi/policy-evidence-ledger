@@ -16,7 +16,7 @@ async function selectView(page: import('@playwright/test').Page, view: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Local service connected')).toBeVisible();
+  await expect(page.locator('.save-state')).toHaveText('Private workspace');
 });
 
 test('browser upload preserves bytes and optional public URL metadata', async ({

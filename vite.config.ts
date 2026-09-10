@@ -19,6 +19,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
 
 const localBindingConfig = {
   main: 'vinext/server/fetch-handler',
+  compatibility_date: '2026-09-09',
   compatibility_flags: ['nodejs_compat'],
   d1_databases: d1
     ? [
@@ -53,12 +54,15 @@ export default defineConfig(async () => {
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       headers: antiFramingHeaders,
-      proxy: {
-        '/api': {
-          target: apiTarget,
-          changeOrigin: true,
-        },
-      },
+      proxy:
+        process.env.PEL_LOCAL_API === '1'
+          ? {
+              '/api': {
+                target: apiTarget,
+                changeOrigin: true,
+              },
+            }
+          : undefined,
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),

@@ -8,7 +8,7 @@ const trustedOrigin =
 export const metadata: Metadata = {
   title: 'Policy Evidence Ledger',
   description:
-    'A local-first workspace for traceable, reproducible policy research.',
+    'A private research workspace for sources, claims, evidence, and the decisions connecting them.',
   metadataBase: new URL(trustedOrigin),
   alternates: { canonical: '/' },
   icons: { icon: '/favicon.svg' },

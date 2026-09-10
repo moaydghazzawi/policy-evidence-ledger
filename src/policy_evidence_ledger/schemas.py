@@ -198,8 +198,25 @@ class ClaimCreate(StrictInput):
 
 class ClaimView(ClaimCreate):
     id: str
+    superseded_by: str | None = None
     created_at: datetime
     evidence: list[EvidenceView] = Field(default_factory=list)
+
+
+class ClaimRevision(ClaimCreate):
+    rationale: str = Field(min_length=1, max_length=2000)
+
+    _validate_rationale = field_validator("rationale")(_not_blank)
+
+
+class ClaimRevisionLink(BaseModel):
+    id: str
+    previous_claim_id: str
+    claim_id: str
+    rationale: str = Field(min_length=1, max_length=2000)
+    created_at: datetime
+
+    _validate_rationale = field_validator("rationale")(_not_blank)
 
 
 class EvidenceCreate(StrictInput):
